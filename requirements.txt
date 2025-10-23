@@ -1,7 +1,7 @@
 langchain
 langchain_groq
 python-dotenv
-fastapi
-uvicorn
 pydantic
 requests
+django
+psycopg2

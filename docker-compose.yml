@@ -1,8 +1,13 @@
 services:
   server:
-    build: .
+    build: 
+      context: .
+      args:
+        USER_ID: 1000
+        GROUP_ID: 1000
     env_file: .env
     volumes:
       - .:/code
     ports:
       - "5000:5000"
+      - "8000:8000"
