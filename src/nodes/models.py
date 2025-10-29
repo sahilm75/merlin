@@ -24,7 +24,7 @@ class Node(models.Model):
         return self.name
     
     @classmethod
-    def create_node(cls, name, content, node_type, parent=None):
+    def create_node(cls, content, node_type, name=None, parent=None):
         node = cls(name=name, content=content, node_type=node_type, parent=parent)
         node.save()
         return node
@@ -51,28 +51,11 @@ class Chat(models.Model):
         return self.title
 
     @classmethod
-    def create_chat(cls, title, parent_node, owner):
+    def create_chat(cls, owner, parent_node=None, title=None):
         chat = cls(title=title, parent_node=parent_node, owner=owner)
         chat.save()
         return chat
-
-class UserSettings(models.Model):
-    id = models.AutoField(primary_key=True)
-    user_name = models.CharField(max_length=100, default='Anonymous')
-    email = models.EmailField(blank=True, null=True)
-    chats = models.ManyToManyField(Chat, blank=True)
-    preferences = models.JSONField(default=dict, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    def __str__(self):
-        return self.user_name
-
-    @classmethod
-    def create_user_settings(cls, user_name, email, preferences):
-        user_settings = cls(user_name=user_name, email=email, preferences=preferences)
-        user_settings.save()
-        return user_settings
     
-    def get_chats(self):
-        return self.chats.all()
+    def set_parent_node(self, node: Node):
+        self.parent_node = node
+        self.save()

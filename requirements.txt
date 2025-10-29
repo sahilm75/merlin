@@ -4,4 +4,3 @@ python-dotenv
 pydantic
 requests
 django
-psycopg2
