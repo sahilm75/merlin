@@ -1,13 +1,43 @@
+version: '3.8'
+
 services:
-  server:
-    build: 
-      context: .
-      args:
-        USER_ID: 1000
-        GROUP_ID: 1000
-    env_file: .env
+  backend:
+    build: .
+    ports:
+      - "8000:8000"
     volumes:
       - .:/code
+      - ./src:/code/src
+    env_file: .env
+    environment:
+      - DEBUG=True
+    command: python src/manage.py runserver 0.0.0.0:8000
+    depends_on:
+      - db
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
     ports:
-      - "5000:5000"
-      - "8000:8000"
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+    command: npm run dev -- --host 0.0.0.0
+
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: merlin
+      POSTGRES_USER: merlin
+      POSTGRES_PASSWORD: merlin
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+volumes:
+  postgres_data:

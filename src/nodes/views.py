@@ -1,12 +1,15 @@
-from django.shortcuts import render
 from django.http import HttpResponseNotAllowed
 from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
+from django.middleware.csrf import get_token
+from django.views.decorators.csrf import ensure_csrf_cookie
 from nodes.services import LLMService, ChatGraphService
-from langchain.messages import SystemMessage, HumanMessage, AIMessage
 
 from .models import Chat, Node, NodeType
 
+from django.views.decorators.csrf import csrf_exempt
+
+@csrf_exempt
 def create_chat(request):
     if request.method != 'POST':
         return HttpResponseNotAllowed(['POST'])
@@ -107,3 +110,11 @@ async def get_response(request):
     llm_node = Node.create_node(content=ai_message, node_type=NodeType.LLM, parent=user_node)
 
     return JsonResponse({'response': ai_message})
+
+@ensure_csrf_cookie
+def get_csrf_token(request):
+    """
+    Get CSRF token for the frontend
+    """
+    token = get_token(request)
+    return JsonResponse({'csrfToken': token})

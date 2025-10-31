@@ -4,3 +4,4 @@ python-dotenv
 pydantic
 requests
 django
+django-cors-headers
