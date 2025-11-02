@@ -8,6 +8,7 @@ from nodes.services import LLMService, ChatGraphService
 from .models import Chat, Node, NodeType
 
 from django.views.decorators.csrf import csrf_exempt
+from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout, get_user_model
 
 @csrf_exempt
 def create_chat(request):
@@ -15,6 +16,7 @@ def create_chat(request):
         return HttpResponseNotAllowed(['POST'])
     
     user = request.user
+    print(user)
     if not user.is_authenticated:
         return JsonResponse({'error': 'Authentication required'}, status=401)
     
@@ -118,3 +120,75 @@ def get_csrf_token(request):
     """
     token = get_token(request)
     return JsonResponse({'csrfToken': token})
+
+
+@csrf_exempt
+def register(request):
+    """Register a new user. Expects POST with 'username' and 'password'."""
+    if request.method != 'POST':
+        return HttpResponseNotAllowed(['POST'])
+
+    username = request.POST.get('username')
+    password = request.POST.get('password')
+
+    if not username or not password:
+        return JsonResponse({'error': 'username and password are required'}, status=400)
+
+    User = get_user_model()
+    if User.objects.filter(username=username).exists():
+        return JsonResponse({'error': 'user already exists'}, status=400)
+
+    user = User(username=username)
+    user.set_password(password)
+    user.save()
+
+    # Log the user in immediately so the session cookie is created for the client
+    try:
+        auth_login(request, user)
+        print(f"[register] session_key={request.session.session_key} user={request.user} is_authenticated={request.user.is_authenticated}")
+    except Exception:
+        # If login fails for any reason, still return registered but client may need to call login
+        return JsonResponse({'status': 'registered', 'username': user.username})
+
+    return JsonResponse({'status': 'logged_in', 'username': user.username})
+
+
+@csrf_exempt
+def login_view(request):
+    """Login user. Expects POST with 'username' and 'password'. Sets session cookie."""
+    if request.method != 'POST':
+        return HttpResponseNotAllowed(['POST'])
+
+    username = request.POST.get('username')
+    password = request.POST.get('password')
+
+    if not username or not password:
+        return JsonResponse({'error': 'username and password are required'}, status=400)
+
+    user = authenticate(request, username=username, password=password)
+    if user is None:
+        return JsonResponse({'error': 'invalid credentials'}, status=401)
+
+    auth_login(request, user)
+    print(f"[login] session_key={request.session.session_key} user={request.user} is_authenticated={request.user.is_authenticated}")
+    return JsonResponse({'status': 'logged_in', 'username': user.username})
+
+
+@csrf_exempt
+def logout_view(request):
+    """Log out current user (POST)."""
+    if request.method != 'POST':
+        return HttpResponseNotAllowed(['POST'])
+
+    auth_logout(request)
+    return JsonResponse({'status': 'logged_out'})
+
+
+def current_user(request):
+    """Return current authenticated user's basic info."""
+    if request.method != 'GET':
+        return HttpResponseNotAllowed(['GET'])
+
+    user = request.user
+    print(f"[create_chat] session_key={request.session.session_key} user={user} is_authenticated={user.is_authenticated}")
+    return JsonResponse({'user': None})

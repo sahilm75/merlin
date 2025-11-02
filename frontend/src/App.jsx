@@ -3,6 +3,10 @@ import ChatList from './components/ChatList'
 import ChatWindow from './components/ChatWindow'
 import { getChatDetails } from './api/chat'
 import api from './api/index'
+import { currentUser } from './api/auth'
+import Login from './components/Login'
+import Register from './components/Register'
+import Profile from './components/Profile'
 import './App.css'
 
 function App() {
@@ -22,7 +26,22 @@ function App() {
       }
     }
     fetchCSRFToken()
+    // fetch current user session
+    const fetchUser = async () => {
+      try {
+        const res = await currentUser()
+        if (res?.data?.user) {
+          setAuthUser(res.data.user.username)
+        }
+      } catch (err) {
+        console.warn('Could not fetch current user', err)
+      }
+    }
+    fetchUser()
   }, [])
+
+  const [authUser, setAuthUser] = useState(null)
+  const [showRegister, setShowRegister] = useState(false)
 
   const handleChatSelect = async (chatId) => {
     setLoading(true)
@@ -41,6 +60,15 @@ function App() {
     <div className="app">
       <div className="app-container">
         <div className="sidebar">
+          <div className="auth-area">
+            {authUser ? (
+              <Profile user={authUser} onLogout={() => setAuthUser(null)} />
+            ) : showRegister ? (
+              <Register onRegister={(username) => { setAuthUser(username); setShowRegister(false) }} switchToLogin={() => setShowRegister(false)} />
+            ) : (
+              <Login onLogin={(username) => setAuthUser(username)} switchToRegister={() => setShowRegister(true)} />
+            )}
+          </div>
           <ChatList 
             onChatSelect={handleChatSelect}
             selectedChatId={selectedChatId}
