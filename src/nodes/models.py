@@ -24,7 +24,7 @@ class Node(models.Model):
         return self.name
     
     @classmethod
-    def create_node(cls, content, node_type, name=None, parent=None):
+    def create_node(cls, content, node_type, name='Unnamed Node', parent=None):
         node = cls(name=name, content=content, node_type=node_type, parent=parent)
         node.save()
         return node
@@ -53,7 +53,7 @@ class Chat(models.Model):
         return self.title
 
     @classmethod
-    def create_chat(cls, owner, parent_node=None, title=None):
+    def create_chat(cls, owner, parent_node=None, title='Untitled Chat'):
         chat = cls(title=title, parent_node=parent_node, owner=owner)
         chat.save()
         return chat
