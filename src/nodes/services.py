@@ -13,15 +13,16 @@ from .models import Chat, Node, NodeType
 from typing import List, Tuple
 
 class LLMService:
-    def __init__(self, model="deepseek-r1-distill-llama-70b", tools=None):
+    def __init__(self, model="openai/gpt-oss-20b", tools=None):
         self.llm = ChatGroq(
             model=model,
             temperature=0,
-            max_tokens=None,
+            max_tokens=8192,
             reasoning_format="parsed",
             timeout=None,
             max_retries=2,
         )
+        self.tools = tools
         if self.tools:
             # Integrate tools with the LLM if provided
             self.llm = self.llm.bind_tools(self.tools)
@@ -31,7 +32,8 @@ class LLMService:
     def build_graph(self):
 
         def llm_node(messages: MessagesState):
-            return {"messages": self.llm.invoke(messages)}
+            print("LLM Node Invoked with messages:", messages)
+            return {"messages": self.llm.invoke(messages.get("messages"))}
         
         def call_tools(state: MessagesState):
             messages = state.messages
@@ -56,6 +58,7 @@ class LLMService:
         return graph
 
     async def get_response(self, state: MessagesState):
+        print("Invoking graph with state:", state)
         result = self.graph.invoke(state)
         return result
     

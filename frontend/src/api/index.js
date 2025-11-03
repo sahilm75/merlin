@@ -1,6 +1,6 @@
 import axios from 'axios'
 
-const API_BASE_URL = 'http://localhost:8000'
+const API_BASE_URL = 'http://localhost:8001'
 
 // Function to get CSRF token from cookies
 function getCookie(name) {

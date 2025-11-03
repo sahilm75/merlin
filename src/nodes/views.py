@@ -6,11 +6,10 @@ from django.views.decorators.csrf import ensure_csrf_cookie
 from nodes.services import LLMService, ChatGraphService
 
 from .models import Chat, Node, NodeType
-
-from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout, get_user_model
 
-@csrf_exempt
+from asgiref.sync import sync_to_async
+
 def create_chat(request):
     if request.method != 'POST':
         return HttpResponseNotAllowed(['POST'])
@@ -92,24 +91,31 @@ async def get_response(request):
         return HttpResponseNotAllowed(['POST'])
 
     user = request.user
-    if not user.is_authenticated:
+    if not sync_to_async(lambda: user.is_authenticated)():
         return JsonResponse({'error': 'Authentication required'}, status=401)
 
     prompt = request.POST.get('prompt')
     parent_node_id = request.POST.get('node_id')
 
+    parent = await sync_to_async(lambda: Node.objects.filter(id=parent_node_id).first())()
+
     if not prompt or not parent_node_id:
         return JsonResponse({'error': 'Prompt and node_id are required'}, status=400)
-    
-    user_node = Node.create_node(content=prompt, node_type=NodeType.USER, parent_id=parent_node_id)
+
+    user_node = await sync_to_async(lambda: Node.create_node(content=prompt, node_type=NodeType.USER, parent=parent))()
+    print("User ID:", user_node.id)
+    print("User node parent ID:", user_node.parent.id)
     lineage = ChatGraphService.get_lineage(node=user_node)
     
     llm_service = LLMService()
-    state = llm_service.generate_history(lineage)
-    llm_response = await llm_service.get_response(state)
-    ai_message = llm_response.messages.messages[-1].content
+    print("Lineage retrieved for LLM:", lineage)
+    linear_history = llm_service.generate_history(lineage)
+    print("Linear history generated for LLM:", linear_history)
+    llm_response = await llm_service.get_response(linear_history)
+    print("LLM Response:", llm_response)
+    ai_message = llm_response.get("messages")[-1].content
 
-    llm_node = Node.create_node(content=ai_message, node_type=NodeType.LLM, parent=user_node)
+    llm_node = await sync_to_async(lambda: Node.create_node(content=ai_message, node_type=NodeType.LLM, parent=user_node))()
 
     return JsonResponse({'response': ai_message})
 
@@ -121,8 +127,6 @@ def get_csrf_token(request):
     token = get_token(request)
     return JsonResponse({'csrfToken': token})
 
-
-@csrf_exempt
 def register(request):
     """Register a new user. Expects POST with 'username' and 'password'."""
     if request.method != 'POST':
@@ -152,8 +156,6 @@ def register(request):
 
     return JsonResponse({'status': 'logged_in', 'username': user.username})
 
-
-@csrf_exempt
 def login_view(request):
     """Login user. Expects POST with 'username' and 'password'. Sets session cookie."""
     if request.method != 'POST':
@@ -173,8 +175,6 @@ def login_view(request):
     print(f"[login] session_key={request.session.session_key} user={request.user} is_authenticated={request.user.is_authenticated}")
     return JsonResponse({'status': 'logged_in', 'username': user.username})
 
-
-@csrf_exempt
 def logout_view(request):
     """Log out current user (POST)."""
     if request.method != 'POST':
